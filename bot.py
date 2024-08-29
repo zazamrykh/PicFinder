@@ -1,7 +1,9 @@
 import atexit
 import os
 import pickle
-from datetime import datetime, timedelta
+import threading
+from datetime import datetime
+import time
 from io import BytesIO
 
 import requests
@@ -16,6 +18,7 @@ bot = telebot.TeleBot(BOT_TOKEN)
 network = ClipNetwork()
 save_dir = 'saves'
 os.makedirs(save_dir, exist_ok=True)
+
 
 @bot.message_handler(content_types=['photo'])
 def handle_photos(message):
@@ -55,6 +58,10 @@ def handle_find_image_command(message):
         return
 
     command_text = message.text.split(" ", 1)
+    if len(command_text) <= 1:
+        bot.send_message(chat_id, text='You should use /find_image description number_image (optional) syntax')
+        return
+
     command_text = command_text[1].split(" ")
 
     top_k = command_text[-1]
@@ -108,4 +115,14 @@ def load_embeddings():
 embeddings = load_embeddings()  # {chat_id : {'embeddings' : [], 'message_ids' : []}}
 atexit.register(save_embeddings)
 schedule.every().day.at("00:00").do(save_embeddings)
+
+
+def schedule_run():
+    while True:
+        schedule.run_pending()
+        time.sleep(5)
+
+
+threading.Thread(target=schedule_run, daemon=True).start()
+
 bot.infinity_polling()
